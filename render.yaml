@@ -1,14 +1,10 @@
 services:
   - type: web
     name: documind-ai
-    runtime: docker
-    dockerfilePath: ./Dockerfile
-    plan: standard
+    env: docker
+    dockerfilePath: Dockerfile
+    plan: starter
     healthCheckPath: /health
-    disk:
-      name: documind-storage
-      mountPath: /app/data
-      sizeGB: 10
     envVars:
       - key: APP_ENV
         value: production

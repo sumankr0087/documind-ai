@@ -3,7 +3,7 @@
 [![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-009688.svg)](https://fastapi.tiangolo.com)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg)](https://www.docker.com/)
-[![Tests](https://img.shields.io/badge/tests-passing-brightgreen.svg)]()
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/sumankr0087/documind-ai)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 DocuMind AI is a production-grade **Retrieval-Augmented Generation (RAG)** platform designed for high-accuracy document Question & Answering. It integrates high-speed document extraction (PyMuPDF for PDF, plus TXT and Markdown), overlapping semantic chunking, dense vector representations via Sentence Transformers, persistent vector indexing with ChromaDB, and grounded LLM synthesis featuring strict source citations (filename, page numbers, and chunk IDs) and prompt injection defense.
