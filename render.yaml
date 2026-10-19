@@ -3,7 +3,7 @@ services:
     name: documind-ai
     env: docker
     dockerfilePath: Dockerfile
-    plan: starter
+    plan: free
     healthCheckPath: /health
     envVars:
       - key: APP_ENV
