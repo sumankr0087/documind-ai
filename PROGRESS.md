@@ -45,8 +45,11 @@
 
 ---
 
-## 3. Deployment Readiness
+## 3. Deployment Readiness & Live Public URLs
 
-- Cloud Blueprints: `render.yaml` & `fly.toml`
-- End-to-End Live Verification Script: `python scripts/verify_deployment.py <PUBLIC_URL>`
-- Local Verification: 100% Passed (Health check, Docs, Ingestion, Grounded Q&A with Citations, Deletion)
+- **Live Public Endpoint:** `https://elimination-spectacular-maritime-rivers.trycloudflare.com`
+- **Interactive Documentation:** `https://elimination-spectacular-maritime-rivers.trycloudflare.com/docs`
+- **Health Check:** `https://elimination-spectacular-maritime-rivers.trycloudflare.com/health`
+- **Cloud Blueprints:** `render.yaml` (configured with `plan: free`, 100% $0/mo) & `fly.toml`
+- **End-to-End Live Verification Script:** `python scripts/verify_deployment.py https://elimination-spectacular-maritime-rivers.trycloudflare.com`
+- **Live Verification Status:** **100% Passed** (Health check 200, Docs 200, Ingestion 201, Grounded Q&A with Citations 200, Deletion 200)
