@@ -1,0 +1,34 @@
+services:
+  - type: web
+    name: documind-ai
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: standard
+    healthCheckPath: /health
+    disk:
+      name: documind-storage
+      mountPath: /app/data
+      sizeGB: 10
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: PORT
+        value: 8000
+      - key: CHROMA_PERSIST_DIRECTORY
+        value: /app/data/chroma
+      - key: UPLOAD_DIR
+        value: /app/data/uploads
+      - key: EMBEDDING_MODEL_NAME
+        value: sentence-transformers/all-MiniLM-L6-v2
+      - key: EMBEDDING_DEVICE
+        value: cpu
+      - key: LLM_PROVIDER
+        value: openai
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_BASE_URL
+        value: https://api.openai.com/v1
+      - key: LLM_MODEL
+        value: gpt-4o-mini
+      - key: LLM_TEMPERATURE
+        value: "0.0"
