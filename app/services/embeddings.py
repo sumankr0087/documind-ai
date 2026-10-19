@@ -23,7 +23,12 @@ class EmbeddingService:
             logger.info("Loading SentenceTransformer model: %s on %s", self.model_name, self.device)
             try:
                 from sentence_transformers import SentenceTransformer
-                EmbeddingService._model = SentenceTransformer(self.model_name, device=self.device)
+                try:
+                    EmbeddingService._model = SentenceTransformer(
+                        self.model_name, device=self.device, local_files_only=True
+                    )
+                except Exception:
+                    EmbeddingService._model = SentenceTransformer(self.model_name, device=self.device)
             except Exception as e:
                 logger.error("Failed to load SentenceTransformer '%s': %s", self.model_name, e)
                 raise RuntimeError(f"Embedding model initialization failed: {e}") from e
