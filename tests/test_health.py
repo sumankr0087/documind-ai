@@ -1,4 +1,4 @@
-"""Automated tests for /health endpoint."""
+"""Automated tests for /health, root, and /ui endpoints."""
 
 
 def test_health_check_returns_200(test_client):
@@ -18,9 +18,17 @@ def test_health_check_returns_200(test_client):
 
 
 def test_root_endpoint(test_client):
-    """Test that root endpoint returns documentation and service info."""
+    """Test that root endpoint returns documentation, UI link, and service info."""
     response = test_client.get("/")
     assert response.status_code == 200
     data = response.json()
     assert data["service"] == "DocuMind AI"
     assert data["documentation"] == "/docs"
+    assert "ui" in data
+
+
+def test_ui_endpoint(test_client):
+    """Test that /ui serves the compiled React application."""
+    response = test_client.get("/ui")
+    assert response.status_code == 200
+    assert "DocuMind AI" in response.text

@@ -14,7 +14,10 @@ DocuMind AI is a production-grade **Retrieval-Augmented Generation (RAG)** platf
 
 ```
                    ┌──────────────────────────────────────┐
-                   │          User / Client App           │
+                   │    React Frontend UI (Web Studio)    │
+                   │  - DocumentManager & FileUploader    │
+                   │  - ChatInterface & CitationCards     │
+                   │  - OOP Models, Services & Hooks      │
                    └──────────────────┬───────────────────┘
                                       │
                          HTTP REST API Requests
@@ -66,8 +69,9 @@ DocuMind AI is a production-grade **Retrieval-Augmented Generation (RAG)** platf
 
 ## Technology Stack
 
+- **Frontend UI:** React 18, TypeScript, Vite, Lucide Icons, OOP Service Layer & Domain Models
 - **API Framework:** FastAPI, Uvicorn (ASGI)
-- **Document Parsing:** PyMuPDF (`fitz` / `pymupdf`) for native multi-page PDF text extraction
+- **Document Parsing:** PyMuPDF (`pymupdf`) for native multi-page PDF text extraction
 - **Vector Storage:** ChromaDB with persistent HNSW index and cosine similarity
 - **Embedding Model:** Sentence Transformers (`sentence-transformers/all-MiniLM-L6-v2`, 384 dimensions)
 - **LLM Integration:** Configurable via OpenAI-compatible API (OpenAI GPT-4o-mini, Groq, Together, Ollama) and offline extractive fallback
@@ -81,6 +85,17 @@ DocuMind AI is a production-grade **Retrieval-Augmented Generation (RAG)** platf
 
 ```
 documind-ai/
+├── frontend/                  # React + TypeScript Web Studio (OOP Architecture)
+│   ├── src/
+│   │   ├── models/            # Domain Entities: DocumentModel, ChunkModel, CitationModel, QAMessageModel, SystemHealthModel
+│   │   ├── services/          # OOP Service Layer: AbstractHttpService, DocumentService, QuestionService, HealthService, ServiceFactory
+│   │   ├── hooks/             # React Custom Hooks: useDocuments, useQuestionAnswering, useSystemHealth
+│   │   ├── components/        # Components: Navbar, FileUploader, DocumentList, DocumentDetailModal, ChatInterface, CitationCard, SystemHealthBadge
+│   │   ├── types/             # API Interface DTOs
+│   │   ├── App.tsx            # Main Application Layout
+│   │   └── index.css          # Design System & Responsive Styles
+│   ├── package.json
+│   └── vite.config.ts
 ├── app/
 │   ├── api/
 │   │   ├── documents.py       # Document upload, listing, detail, and deletion
@@ -99,7 +114,7 @@ documind-ai/
 │   │   └── vector_store.py    # ChromaDB wrapper & document registry
 │   ├── config.py              # Application settings & environment loader
 │   ├── dependencies.py        # FastAPI dependency injection singletons
-│   └── main.py                # FastAPI app initialization, CORS, lifespan
+│   └── main.py                # FastAPI app initialization, CORS, lifespan, /ui mounting
 ├── evals/
 │   ├── dataset.py             # Benchmark documents & evaluation questions
 │   ├── metrics.py             # Hit Rate@K, Recall@K, and MRR calculations

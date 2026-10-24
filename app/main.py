@@ -1,5 +1,6 @@
 """FastAPI Application entrypoint for DocuMind AI."""
 import logging
+from pathlib import Path
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -57,16 +58,33 @@ app.include_router(documents_router)
 app.include_router(questions_router)
 
 
+# Mount static frontend build if it exists
+frontend_dist = Path(__file__).resolve().parent.parent / "frontend" / "dist"
+if frontend_dist.exists():
+    from fastapi.staticfiles import StaticFiles
+    from fastapi.responses import FileResponse
+
+    if (frontend_dist / "assets").exists():
+        app.mount("/assets", StaticFiles(directory=str(frontend_dist / "assets")), name="assets")
+
+    @app.get("/ui", summary="DocuMind AI Web UI", include_in_schema=False)
+    @app.get("/app", include_in_schema=False)
+    def serve_frontend_ui():
+        """Serve the compiled React frontend application."""
+        return FileResponse(frontend_dist / "index.html")
+
+
 @app.get("/", summary="Root index", include_in_schema=False)
 def root_redirect():
-    """Return welcome message and documentation link."""
+    """Return welcome message, UI studio link, and documentation link."""
     return JSONResponse(
         content={
             "service": "DocuMind AI",
             "version": "1.0.0",
+            "ui": "/ui",
             "documentation": "/docs",
             "health": "/health",
-            "description": "Visit /docs for interactive OpenAPI documentation and API testing.",
+            "description": "Visit /ui for the Web Studio or /docs for interactive OpenAPI documentation.",
         }
     )
 

@@ -25,9 +25,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Pre-cache embedding model weights for rapid cold starts and offline execution
 RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')"
 
-# Copy application code and evaluation suite
+# Copy application code, evaluation suite, and compiled React UI
 COPY app /app/app
 COPY evals /app/evals
+COPY frontend/dist /app/frontend/dist
 
 # Create non-privileged user and persistent data directories
 RUN useradd -u 10001 -m -s /bin/bash appuser && \
