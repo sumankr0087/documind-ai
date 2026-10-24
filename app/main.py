@@ -2,7 +2,7 @@
 import logging
 from pathlib import Path
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -75,8 +75,13 @@ if frontend_dist.exists():
 
 
 @app.get("/", summary="Root index", include_in_schema=False)
-def root_redirect():
-    """Return welcome message, UI studio link, and documentation link."""
+def root_redirect(request: Request):
+    """Return React UI if requested by browser, or API service JSON for API clients."""
+    accept = request.headers.get("accept", "")
+    if "text/html" in accept and frontend_dist.exists():
+        from fastapi.responses import FileResponse
+        return FileResponse(frontend_dist / "index.html")
+
     return JSONResponse(
         content={
             "service": "DocuMind AI",

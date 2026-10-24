@@ -1,12 +1,13 @@
-# Production Dockerfile for DocuMind AI
+# Production Dockerfile for DocuMind AI (Hugging Face Spaces, Render, & Docker compatible)
 FROM python:3.11-slim
 
 # Optimize Python execution environment
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PORT=8000 \
+    PORT=7860 \
     HOST=0.0.0.0 \
     APP_ENV=production \
+    HOME=/home/appuser \
     CHROMA_PERSIST_DIRECTORY=/app/data/chroma \
     UPLOAD_DIR=/app/data/uploads
 
@@ -30,17 +31,17 @@ COPY app /app/app
 COPY evals /app/evals
 COPY frontend/dist /app/frontend/dist
 
-# Create non-privileged user and persistent data directories
-RUN useradd -u 10001 -m -s /bin/bash appuser && \
-    mkdir -p /app/data/chroma /app/data/uploads && \
-    chown -R appuser:appuser /app
+# Create non-privileged user (UID 1000 for Hugging Face Spaces compatibility)
+RUN useradd -u 1000 -m -s /bin/bash appuser && \
+    mkdir -p /app/data/chroma /app/data/uploads /home/appuser/.cache && \
+    chown -R appuser:appuser /app /home/appuser
 
 USER appuser
 
-EXPOSE 8000
+EXPOSE 7860 8000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
-    CMD curl -f http://localhost:${PORT:-8000}/health || exit 1
+    CMD curl -f http://localhost:${PORT:-7860}/health || exit 1
 
-# Bind to dynamically assigned PORT from hosting environment
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+# Bind to dynamically assigned PORT from hosting environment (default: 7860 for Hugging Face Spaces)
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-7860}"]
