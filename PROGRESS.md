@@ -48,9 +48,10 @@
 
 ## 3. Deployment Readiness & Live Public URLs
 
-- **Live Public Web Studio (React UI):** `https://season-cohen-cashiers-default.trycloudflare.com/ui`
-- **Live Interactive API Docs (Swagger):** `https://season-cohen-cashiers-default.trycloudflare.com/docs`
-- **Live Health Check:** `https://season-cohen-cashiers-default.trycloudflare.com/health`
-- **Cloud Blueprints:** `render.yaml` (configured with `plan: free`, 100% $0/mo) & `fly.toml`
-- **End-to-End Live Verification Script:** `python scripts/verify_deployment.py https://season-cohen-cashiers-default.trycloudflare.com`
-- **Live Verification Status:** **100% Passed** (Health check 200, Docs 200, Ingestion 201, Grounded Q&A with Citations 200, Deletion 200)
+- **Live Public Web Studio (React UI):** `https://eyed-having-spyware-defendant.trycloudflare.com/ui`
+- **Live Interactive API Docs (Swagger):** `https://eyed-having-spyware-defendant.trycloudflare.com/docs`
+- **Live Health Check:** `https://eyed-having-spyware-defendant.trycloudflare.com/health`
+- **Hugging Face Space:** `https://huggingface.co/spaces/Sumankr0087/documind-ai`
+- **Cloud Blueprints:** `render.yaml` (configured with `plan: free`, 100% $0/mo), `Dockerfile` (Hugging Face Spaces + Render compatible), & `fly.toml`
+- **End-to-End Live Verification Script:** `python scripts/verify_deployment.py https://eyed-having-spyware-defendant.trycloudflare.com`
+- **Live Verification Status:** **100% Passed (5/5 tests)** (Health check 200, Docs 200, Ingestion 201, Grounded Q&A with Citations 200, Deletion 200)
