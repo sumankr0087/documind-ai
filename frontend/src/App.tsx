@@ -14,8 +14,10 @@ export const App: React.FC = () => {
     documents,
     loading: docsLoading,
     uploading,
+    uploadStatus,
     error: docsError,
     uploadDocument,
+    uploadBatch,
     deleteDocument,
     inspectDocument,
     inspectingDoc,
@@ -26,11 +28,24 @@ export const App: React.FC = () => {
   const {
     messages,
     isAsking,
+    streamingDelta,
     error: qaError,
-    selectedDocumentId,
-    setSelectedDocumentId,
+    selectedDocumentIds,
+    toggleDocumentSelection,
+    clearDocumentSelection,
     topK,
     setTopK,
+    enableMmr,
+    setEnableMmr,
+    enableHybrid,
+    setEnableHybrid,
+    enableReranking,
+    setEnableReranking,
+    sessions,
+    activeSessionId,
+    setActiveSessionId,
+    createNewTopic,
+    deleteTopic,
     askQuestion,
     clearChat,
   } = useQuestionAnswering();
@@ -72,15 +87,24 @@ export const App: React.FC = () => {
             <p className="section-subtitle">Upload &amp; index PDFs, Markdown, and TXT into ChromaDB</p>
           </div>
 
-          <FileUploader onUpload={uploadDocument} uploading={uploading} />
+          <FileUploader
+            onUpload={uploadDocument}
+            onBatchUpload={uploadBatch}
+            uploading={uploading}
+            uploadStatus={uploadStatus}
+          />
 
           <DocumentList
             documents={documents}
             loading={docsLoading}
-            selectedDocId={selectedDocumentId}
+            selectedDocId={selectedDocumentIds[0] || null}
             onSelectDoc={(id) => {
-              setSelectedDocumentId(id);
-              setActiveTab("chat"); // Switch to chat tab on mobile when document selected
+              if (id) {
+                toggleDocumentSelection(id);
+              } else {
+                clearDocumentSelection();
+              }
+              setActiveTab("chat");
             }}
             onInspectDoc={inspectDocument}
             onDeleteDoc={deleteDocument}
@@ -92,11 +116,24 @@ export const App: React.FC = () => {
           <ChatInterface
             messages={messages}
             isAsking={isAsking}
+            streamingDelta={streamingDelta}
             documents={documents}
-            selectedDocId={selectedDocumentId}
-            onSelectDoc={setSelectedDocumentId}
+            selectedDocIds={selectedDocumentIds}
+            onToggleDoc={toggleDocumentSelection}
+            onClearDocSelection={clearDocumentSelection}
             topK={topK}
             onTopKChange={setTopK}
+            enableMmr={enableMmr}
+            onToggleMmr={setEnableMmr}
+            enableHybrid={enableHybrid}
+            onToggleHybrid={setEnableHybrid}
+            enableReranking={enableReranking}
+            onToggleReranking={setEnableReranking}
+            sessions={sessions}
+            activeSessionId={activeSessionId}
+            onSelectSession={setActiveSessionId}
+            onCreateSession={() => createNewTopic()}
+            onDeleteSession={deleteTopic}
             onAsk={askQuestion}
             onClear={clearChat}
           />

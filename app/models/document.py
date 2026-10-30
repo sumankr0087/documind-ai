@@ -35,6 +35,7 @@ class DocumentMetadata(BaseModel):
     size_bytes: int = Field(..., description="Size of the uploaded file in bytes")
     chunk_count: int = Field(..., description="Number of chunks extracted and indexed")
     page_count: Optional[int] = Field(None, description="Total number of pages (for PDF)")
+    file_hash: Optional[str] = Field(None, description="SHA-256 hash of file content for deduplication")
     created_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
 
 
@@ -43,6 +44,17 @@ class DocumentUploadResponse(BaseModel):
 
     message: str = "Document successfully ingested and indexed"
     document: DocumentMetadata
+    skipped: bool = Field(False, description="True if identical file was skipped due to duplicate hash")
+
+
+class BatchUploadResponse(BaseModel):
+    """Response returned upon batch uploading multiple documents."""
+
+    message: str = "Batch upload completed"
+    total_files: int
+    ingested_count: int
+    skipped_count: int
+    documents: List[DocumentMetadata]
 
 
 class DocumentListResponse(BaseModel):

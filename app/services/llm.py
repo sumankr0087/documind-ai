@@ -1,7 +1,8 @@
-"""Configurable LLM Service with prompt injection defense, grounding verification, and mock fallback."""
+"""Configurable LLM Service with streaming support, prompt injection defense, grounding verification, and conversation context."""
+import asyncio
 import logging
 import re
-from typing import List, Optional, Tuple
+from typing import Any, AsyncGenerator, Dict, List, Optional, Tuple
 from app.config import Settings
 from app.models.question import Citation
 from app.services.retriever import RetrievedChunk
@@ -31,7 +32,7 @@ INSUFFICIENT_EVIDENCE_PHRASES = [
 
 
 class LLMService:
-    """Configurable LLM provider service supporting OpenAI, Groq, Ollama, and Mock modes."""
+    """Configurable LLM provider service supporting OpenAI, Groq, Ollama, and Mock/Streaming modes."""
 
     def __init__(self, settings: Settings):
         self.settings = settings
@@ -43,7 +44,6 @@ class LLMService:
 
     def _sanitize_input(self, text: str) -> str:
         """Strip control characters and isolate document input."""
-        # Clean control characters except standard whitespace
         return "".join(ch for ch in text if ch.isprintable() or ch in ("\n", "\t", "\r"))
 
     def _format_context(self, chunks: List[RetrievedChunk]) -> str:
@@ -95,8 +95,35 @@ class LLMService:
 
         return True
 
+    def _build_messages(
+        self,
+        question: str,
+        chunks: List[RetrievedChunk],
+        recent_history: Optional[List[Dict[str, str]]] = None,
+    ) -> List[Dict[str, str]]:
+        """Construct prompt message list with recent conversation context."""
+        formatted_context = self._format_context(chunks)
+        user_prompt = (
+            f"Context excerpts:\n{formatted_context}\n\n"
+            f"User Question: {question}\n\n"
+            f"Answer based only on the excerpts above:"
+        )
+
+        messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+        if recent_history:
+            for turn in recent_history:
+                role = turn.get("role", "user")
+                if role in ("user", "assistant"):
+                    messages.append({"role": role, "content": turn.get("content", "")})
+
+        messages.append({"role": "user", "content": user_prompt})
+        return messages
+
     async def _generate_openai_compatible(
-        self, question: str, chunks: List[RetrievedChunk]
+        self,
+        question: str,
+        chunks: List[RetrievedChunk],
+        recent_history: Optional[List[Dict[str, str]]] = None,
     ) -> Tuple[str, bool, str]:
         """Generate answer via OpenAI or OpenAI-compatible endpoint (Groq, Ollama, etc.)."""
         from openai import AsyncOpenAI
@@ -106,20 +133,12 @@ class LLMService:
             base_url=self.base_url,
         )
 
-        formatted_context = self._format_context(chunks)
-        user_prompt = (
-            f"Context excerpts:\n{formatted_context}\n\n"
-            f"User Question: {question}\n\n"
-            f"Answer based only on the excerpts above:"
-        )
+        messages = self._build_messages(question, chunks, recent_history)
 
         try:
             response = await client.chat.completions.create(
                 model=self.model,
-                messages=[
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": user_prompt},
-                ],
+                messages=messages,
                 temperature=self.temperature,
                 max_tokens=600,
             )
@@ -152,7 +171,10 @@ class LLMService:
 
         # Extract sentences from top chunks that best match question keywords
         question_words = set(re.findall(r"\w+", question.lower()))
-        question_words -= {"what", "is", "the", "how", "why", "when", "where", "who", "which", "are", "do", "does", "in", "of", "and", "a", "an", "to"}
+        question_words -= {
+            "what", "is", "the", "how", "why", "when", "where", "who", "which",
+            "are", "do", "does", "in", "of", "and", "a", "an", "to"
+        }
 
         matched_sentences = []
         for c in chunks:
@@ -169,15 +191,19 @@ class LLMService:
             answer = " ".join(top_sentences)
             return answer, True, "offline-extractive-fallback"
         else:
-            # Fall back to best chunk text
-            answer = best_chunk.text[:400].strip()
-            return answer, True, "offline-extractive-fallback"
+            return (
+                "Based on the available documents, there is insufficient evidence to answer this question.",
+                False,
+                "offline-extractive-fallback",
+            )
 
     async def generate_answer(
-        self, question: str, chunks: List[RetrievedChunk]
+        self,
+        question: str,
+        chunks: List[RetrievedChunk],
+        recent_history: Optional[List[Dict[str, str]]] = None,
     ) -> Tuple[str, List[Citation], bool, str]:
         """Generate a grounded answer and structured citations."""
-        # If no chunks were retrieved at all
         if not chunks:
             return (
                 "Based on the available documents, there is insufficient evidence to answer this question.",
@@ -186,12 +212,88 @@ class LLMService:
                 "none",
             )
 
-        # Route between external LLM API and mock/offline fallback
         if self.provider == "mock" or not self.api_key or self.api_key.startswith("your_"):
             logger.info("Using offline/mock generator (provider=%s, api_key_set=%s)", self.provider, bool(self.api_key))
             answer, is_sufficient, model_name = self._generate_mock_or_offline(question, chunks)
         else:
-            answer, is_sufficient, model_name = await self._generate_openai_compatible(question, chunks)
+            answer, is_sufficient, model_name = await self._generate_openai_compatible(
+                question, chunks, recent_history
+            )
 
         citations = self._build_citations(chunks) if is_sufficient else []
         return answer, citations, is_sufficient, model_name
+
+    async def generate_answer_stream(
+        self,
+        question: str,
+        chunks: List[RetrievedChunk],
+        recent_history: Optional[List[Dict[str, str]]] = None,
+    ) -> AsyncGenerator[Dict[str, Any], None]:
+        """Stream answer tokens in real-time followed by citations and completion metadata."""
+        if not chunks:
+            msg = "Based on the available documents, there is insufficient evidence to answer this question."
+            yield {"type": "token", "delta": msg}
+            yield {
+                "type": "done",
+                "answer": msg,
+                "citations": [],
+                "evidence_sufficient": False,
+                "model_used": "none",
+            }
+            return
+
+        is_offline = self.provider == "mock" or not self.api_key or self.api_key.startswith("your_")
+
+        if is_offline:
+            answer, is_sufficient, model_name = self._generate_mock_or_offline(question, chunks)
+            citations = self._build_citations(chunks) if is_sufficient else []
+
+            # Simulate natural token streaming with small delay
+            words = answer.split(" ")
+            for i, word in enumerate(words):
+                token = word if i == 0 else " " + word
+                yield {"type": "token", "delta": token}
+                await asyncio.sleep(0.015)
+
+            yield {
+                "type": "done",
+                "answer": answer,
+                "citations": [c.model_dump() for c in citations],
+                "evidence_sufficient": is_sufficient,
+                "model_used": model_name,
+            }
+        else:
+            from openai import AsyncOpenAI
+
+            client = AsyncOpenAI(api_key=self.api_key or "dummy-key", base_url=self.base_url)
+            messages = self._build_messages(question, chunks, recent_history)
+            accumulated_answer = []
+
+            try:
+                stream = await client.chat.completions.create(
+                    model=self.model,
+                    messages=messages,
+                    temperature=self.temperature,
+                    max_tokens=600,
+                    stream=True,
+                )
+                async for chunk in stream:
+                    delta = chunk.choices[0].delta.content if chunk.choices and chunk.choices[0].delta else None
+                    if delta:
+                        accumulated_answer.append(delta)
+                        yield {"type": "token", "delta": delta}
+
+                full_answer = "".join(accumulated_answer).strip()
+                is_sufficient = self._check_evidence_sufficiency(full_answer, chunks)
+                citations = self._build_citations(chunks) if is_sufficient else []
+
+                yield {
+                    "type": "done",
+                    "answer": full_answer,
+                    "citations": [c.model_dump() for c in citations],
+                    "evidence_sufficient": is_sufficient,
+                    "model_used": self.model,
+                }
+            except Exception as e:
+                logger.error("Streaming LLM error: %s", e)
+                yield {"type": "error", "detail": f"LLM streaming failed: {e}"}

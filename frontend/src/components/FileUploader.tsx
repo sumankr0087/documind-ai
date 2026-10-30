@@ -1,37 +1,55 @@
 import React, { useState, useRef } from "react";
-import { UploadCloud, FileText, Loader2, AlertCircle } from "lucide-react";
+import { UploadCloud, FileText, Loader2, AlertCircle, Files } from "lucide-react";
 
 interface FileUploaderProps {
   onUpload: (file: File) => Promise<unknown>;
+  onBatchUpload?: (files: File[]) => Promise<unknown>;
   uploading: boolean;
+  uploadStatus?: string | null;
 }
 
 const SUPPORTED_EXTS = [".pdf", ".txt", ".md", ".markdown"];
 const MAX_SIZE_MB = 25;
 
-export const FileUploader: React.FC<FileUploaderProps> = ({ onUpload, uploading }) => {
+export const FileUploader: React.FC<FileUploaderProps> = ({
+  onUpload,
+  onBatchUpload,
+  uploading,
+  uploadStatus,
+}) => {
   const [isDragOver, setIsDragOver] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const validateAndUpload = async (file: File) => {
+  const processFiles = async (fileList: FileList | File[]) => {
     setLocalError(null);
+    const validFiles: File[] = [];
 
-    // Validate size
-    if (file.size > MAX_SIZE_MB * 1024 * 1024) {
-      setLocalError(`File size (${(file.size / 1024 / 1024).toFixed(1)}MB) exceeds maximum ${MAX_SIZE_MB}MB.`);
-      return;
+    for (let i = 0; i < fileList.length; i++) {
+      const file = fileList[i];
+      if (file.size > MAX_SIZE_MB * 1024 * 1024) {
+        setLocalError(`File '${file.name}' (${(file.size / 1024 / 1024).toFixed(1)}MB) exceeds ${MAX_SIZE_MB}MB.`);
+        return;
+      }
+      const nameLower = file.name.toLowerCase();
+      const isSupported = SUPPORTED_EXTS.some((ext) => nameLower.endsWith(ext));
+      if (!isSupported) {
+        setLocalError(`Unsupported format '${file.name}'. Please upload PDF, Markdown, or TXT.`);
+        return;
+      }
+      validFiles.push(file);
     }
 
-    // Validate extension
-    const nameLower = file.name.toLowerCase();
-    const isSupported = SUPPORTED_EXTS.some((ext) => nameLower.endsWith(ext));
-    if (!isSupported) {
-      setLocalError(`Unsupported format '${file.name}'. Please upload PDF, Markdown, or plain text.`);
-      return;
+    if (validFiles.length === 0) return;
+
+    if (validFiles.length > 1 && onBatchUpload) {
+      await onBatchUpload(validFiles);
+    } else {
+      for (const f of validFiles) {
+        await onUpload(f);
+      }
     }
 
-    await onUpload(file);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -50,13 +68,13 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onUpload, uploading 
     e.preventDefault();
     setIsDragOver(false);
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      validateAndUpload(e.dataTransfer.files[0]);
+      processFiles(e.dataTransfer.files);
     }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      validateAndUpload(e.target.files[0]);
+      processFiles(e.target.files);
     }
   };
 
@@ -73,6 +91,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onUpload, uploading 
           ref={fileInputRef}
           type="file"
           accept=".pdf,.txt,.md,.markdown"
+          multiple
           className="hidden"
           onChange={handleFileChange}
           disabled={uploading}
@@ -81,8 +100,10 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onUpload, uploading 
         {uploading ? (
           <div className="dropzone-content">
             <Loader2 size={32} className="spin-icon text-indigo-600 mb-2" />
-            <p className="font-semibold text-slate-800 text-sm">Processing &amp; Indexing Document...</p>
-            <p className="text-xs text-slate-500 mt-1">Extracting text &bull; Generating embeddings &bull; ChromaDB</p>
+            <p className="font-semibold text-slate-800 text-sm">Processing &amp; Indexing Document(s)...</p>
+            <p className="text-xs text-slate-500 mt-1">
+              Extracting text &bull; Checking duplicates &bull; Generating embeddings &bull; ChromaDB
+            </p>
           </div>
         ) : (
           <div className="dropzone-content">
@@ -90,7 +111,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onUpload, uploading 
               <UploadCloud size={24} className="text-indigo-600" />
             </div>
             <p className="font-semibold text-slate-800 text-sm">
-              Drop document here, or <span className="text-indigo-600 underline">browse</span>
+              Drop single or multiple files, or <span className="text-indigo-600 underline">browse</span>
             </p>
             <div className="flex items-center gap-2 mt-2 text-xs text-slate-400">
               <span className="flex items-center gap-1">
@@ -101,11 +122,19 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onUpload, uploading 
               <span>&bull;</span>
               <span>Plain Text</span>
               <span>&bull;</span>
-              <span>Max 25MB</span>
+              <span className="flex items-center gap-1 font-medium text-indigo-500">
+                <Files size={12} /> Multi-file Upload
+              </span>
             </div>
           </div>
         )}
       </div>
+
+      {uploadStatus && (
+        <div className="mt-2 text-xs text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded border border-indigo-100 flex items-center gap-1.5">
+          <span>ℹ️ {uploadStatus}</span>
+        </div>
+      )}
 
       {localError && (
         <div className="upload-error-banner">

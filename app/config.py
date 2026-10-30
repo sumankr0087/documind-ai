@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     chroma_collection_name: str = "documind_collection"
     upload_dir: str = "./data/uploads"
     max_upload_size_mb: int = 25
+    sqlite_db_path: str = "./data/documind.db"
 
     # Embedding settings
     embedding_model_name: str = "sentence-transformers/all-MiniLM-L6-v2"
@@ -30,6 +31,13 @@ class Settings(BaseSettings):
 
     # Retrieval settings
     top_k: int = 5
+    enable_mmr: bool = True
+    mmr_lambda: float = 0.7
+    enable_hybrid_search: bool = True
+    hybrid_dense_weight: float = 0.6
+    hybrid_bm25_weight: float = 0.4
+    enable_reranking: bool = False
+    reranker_model_name: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
 
     # LLM Settings
     llm_provider: str = "openai"  # "openai", "groq", "ollama", "mock"
@@ -48,6 +56,7 @@ class Settings(BaseSettings):
         """Ensure necessary runtime directories exist."""
         Path(self.chroma_persist_directory).mkdir(parents=True, exist_ok=True)
         Path(self.upload_dir).mkdir(parents=True, exist_ok=True)
+        Path(self.sqlite_db_path).parent.mkdir(parents=True, exist_ok=True)
 
 
 @lru_cache()

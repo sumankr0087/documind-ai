@@ -112,8 +112,10 @@ class VectorStoreService:
         query_embedding: List[float],
         top_k: int = 5,
         document_id: Optional[str] = None,
+        document_ids: Optional[List[str]] = None,
+        include_embeddings: bool = False,
     ) -> List[Dict[str, Any]]:
-        """Retrieve the top-K similar chunks, optionally filtered by document_id."""
+        """Retrieve the top-K similar chunks, optionally filtered by single or multiple document IDs."""
         total_count = self.collection.count()
         if total_count == 0:
             return []
@@ -123,14 +125,26 @@ class VectorStoreService:
         if n_results <= 0:
             return []
 
-        where_filter = {"document_id": document_id} if document_id else None
+        where_filter = None
+        if document_ids:
+            clean_ids = [d for d in document_ids if d]
+            if len(clean_ids) == 1:
+                where_filter = {"document_id": clean_ids[0]}
+            elif len(clean_ids) > 1:
+                where_filter = {"document_id": {"$in": clean_ids}}
+        elif document_id:
+            where_filter = {"document_id": document_id}
+
+        includes = ["documents", "metadatas", "distances"]
+        if include_embeddings:
+            includes.append("embeddings")
 
         try:
             results = self.collection.query(
                 query_embeddings=[query_embedding],
                 n_results=n_results,
                 where=where_filter,
-                include=["documents", "metadatas", "distances"],
+                include=includes,
             )
         except Exception as e:
             logger.warning("Chroma query failed: %s", e)
@@ -144,6 +158,7 @@ class VectorStoreService:
         documents = results["documents"][0] if results.get("documents") else []
         metadatas = results["metadatas"][0] if results.get("metadatas") else []
         distances = results["distances"][0] if results.get("distances") else []
+        embeddings = results.get("embeddings", [[]])[0] if include_embeddings and results.get("embeddings") else []
 
         for i in range(len(ids)):
             chunk_id = ids[i]
@@ -156,21 +171,58 @@ class VectorStoreService:
             similarity = max(0.0, min(1.0, 1.0 - dist))
 
             page_num = meta.get("page_number", -1)
-            chunks.append(
-                {
-                    "chunk_id": chunk_id,
-                    "document_id": meta.get("document_id", ""),
-                    "chunk_index": meta.get("chunk_index", 0),
-                    "filename": meta.get("filename", ""),
-                    "page_number": page_num if page_num != -1 else None,
-                    "char_length": meta.get("char_length", len(text)),
-                    "text": text,
-                    "relevance_score": round(similarity, 4),
-                    "distance": round(dist, 4),
-                }
-            )
+            chunk_item = {
+                "chunk_id": chunk_id,
+                "document_id": meta.get("document_id", ""),
+                "chunk_index": meta.get("chunk_index", 0),
+                "filename": meta.get("filename", ""),
+                "page_number": page_num if page_num != -1 else None,
+                "char_length": meta.get("char_length", len(text)),
+                "text": text,
+                "relevance_score": round(similarity, 4),
+                "distance": round(dist, 4),
+            }
+            if include_embeddings and i < len(embeddings):
+                chunk_item["embedding"] = embeddings[i]
+
+            chunks.append(chunk_item)
 
         return chunks
+
+    def get_all_chunks(self) -> List[Dict[str, Any]]:
+        """Retrieve all indexed chunks from ChromaDB for lexical index synchronization."""
+        total = self.collection.count()
+        if total == 0:
+            return []
+
+        try:
+            results = self.collection.get(include=["documents", "metadatas"])
+            if not results or not results.get("ids"):
+                return []
+
+            ids = results["ids"]
+            docs = results.get("documents", []) or []
+            metas = results.get("metadatas", []) or []
+
+            chunks = []
+            for i in range(len(ids)):
+                m = metas[i] if i < len(metas) else {}
+                page_num = m.get("page_number", -1)
+                text = docs[i] if i < len(docs) else ""
+                chunks.append(
+                    {
+                        "chunk_id": ids[i],
+                        "document_id": m.get("document_id", ""),
+                        "chunk_index": m.get("chunk_index", 0),
+                        "filename": m.get("filename", ""),
+                        "page_number": page_num if page_num != -1 else None,
+                        "text": text,
+                    }
+                )
+            return chunks
+        except Exception as e:
+            logger.warning("Failed to fetch all chunks from ChromaDB: %s", e)
+            return []
 
     def get_chunks_for_document(self, document_id: str) -> List[ChunkMetadata]:
         """Fetch metadata for all chunks belonging to a document."""

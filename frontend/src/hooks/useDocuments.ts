@@ -7,6 +7,7 @@ export function useDocuments() {
   const [loading, setLoading] = useState<boolean>(true);
   const [uploading, setUploading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [uploadStatus, setUploadStatus] = useState<string | null>(null);
 
   // For Document inspection modal
   const [inspectingDoc, setInspectingDoc] = useState<{
@@ -38,12 +39,38 @@ export function useDocuments() {
     try {
       setUploading(true);
       setError(null);
+      setUploadStatus(null);
       const docService = ServiceFactory.getInstance().getDocumentService();
-      const newDoc = await docService.uploadDocument(file);
-      setDocuments((prev) => [newDoc, ...prev]);
-      return newDoc;
+      const res = await docService.uploadDocument(file);
+      if (res.skipped) {
+        setUploadStatus(res.message);
+      } else {
+        setDocuments((prev) => [res.document, ...prev.filter((d) => d.id !== res.document.id)]);
+      }
+      return res.document;
     } catch (err: unknown) {
       const msg = err instanceof ApiException ? err.getDisplayMessage() : "Failed to upload document";
+      setError(msg);
+      return null;
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const uploadBatch = async (files: File[]): Promise<{ ingested: number; skipped: number; total: number } | null> => {
+    try {
+      setUploading(true);
+      setError(null);
+      setUploadStatus(null);
+      const docService = ServiceFactory.getInstance().getDocumentService();
+      const res = await docService.uploadBatch(files);
+      setUploadStatus(
+        `Batch upload: ${res.ingested} indexed, ${res.skipped} duplicate(s) skipped.`
+      );
+      await fetchDocuments();
+      return res;
+    } catch (err: unknown) {
+      const msg = err instanceof ApiException ? err.getDisplayMessage() : "Batch upload failed";
       setError(msg);
       return null;
     } finally {
@@ -87,8 +114,10 @@ export function useDocuments() {
     documents,
     loading,
     uploading,
+    uploadStatus,
     error,
     uploadDocument,
+    uploadBatch,
     deleteDocument,
     inspectDocument,
     inspectingDoc,

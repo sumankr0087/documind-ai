@@ -9,6 +9,7 @@ export interface IDocumentMetadata {
   size_bytes: number;
   chunk_count: number;
   page_count: number | null;
+  file_hash?: string | null;
   created_at: string;
 }
 
@@ -37,7 +38,13 @@ export interface ICitation {
 export interface IQuestionRequest {
   question: string;
   document_id?: string | null;
+  document_ids?: string[] | null;
+  session_id?: string | null;
+  file_extensions?: string[] | null;
   top_k?: number;
+  enable_mmr?: boolean;
+  enable_hybrid?: boolean;
+  enable_reranking?: boolean;
 }
 
 export interface IQuestionResponse {
@@ -46,7 +53,36 @@ export interface IQuestionResponse {
   citations: ICitation[];
   evidence_sufficient: boolean;
   document_id: string | null;
+  document_ids?: string[] | null;
+  session_id?: string | null;
   model_used: string;
+}
+
+export interface IChatSession {
+  session_id: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
+  message_count: number;
+}
+
+export interface IChatMessage {
+  message_id: string;
+  session_id: string;
+  role: "user" | "assistant";
+  content: string;
+  citations: ICitation[];
+  created_at: string;
+}
+
+export interface IChatSessionDetailResponse {
+  session: IChatSession;
+  messages: IChatMessage[];
+}
+
+export interface IChatSessionListResponse {
+  total_sessions: number;
+  sessions: IChatSession[];
 }
 
 export interface IHealthServices {
@@ -76,6 +112,15 @@ export interface IHealthResponse {
 export interface IDocumentUploadResponse {
   message: string;
   document: IDocumentMetadata;
+  skipped?: boolean;
+}
+
+export interface IBatchUploadResponse {
+  message: string;
+  total_files: number;
+  ingested_count: number;
+  skipped_count: number;
+  documents: IDocumentMetadata[];
 }
 
 export interface IDocumentListResponse {

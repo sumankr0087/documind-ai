@@ -7,8 +7,14 @@ class QuestionRequest(BaseModel):
     """Request payload for question answering."""
 
     question: str = Field(..., min_length=2, max_length=2000, description="The user question to answer")
-    document_id: Optional[str] = Field(None, description="Optional document ID filter to scope retrieval")
+    document_id: Optional[str] = Field(None, description="Optional single document ID filter to scope retrieval")
+    document_ids: Optional[List[str]] = Field(None, description="Optional list of document IDs to scope retrieval to exact documents")
+    session_id: Optional[str] = Field(None, description="Optional chat session ID for continuing conversation topics")
+    file_extensions: Optional[List[str]] = Field(None, description="Optional list of file extensions (e.g. ['pdf', 'txt']) to filter")
     top_k: Optional[int] = Field(None, ge=1, le=20, description="Number of relevant chunks to retrieve (default: 5)")
+    enable_mmr: Optional[bool] = Field(None, description="Enable Maximal Marginal Relevance for diversity")
+    enable_hybrid: Optional[bool] = Field(None, description="Enable hybrid dense + BM25 keyword retrieval")
+    enable_reranking: Optional[bool] = Field(None, description="Enable cross-encoder reranking")
 
 
 class Citation(BaseModel):
@@ -32,5 +38,7 @@ class QuestionResponse(BaseModel):
         ...,
         description="Indicates whether retrieved context contained sufficient evidence to answer",
     )
-    document_id: Optional[str] = Field(None, description="Scoping document ID if filtered")
+    document_id: Optional[str] = Field(None, description="Scoping document ID if single-filtered")
+    document_ids: Optional[List[str]] = Field(None, description="Scoping document IDs if multi-filtered")
+    session_id: Optional[str] = Field(None, description="Chat session ID context")
     model_used: str = Field(..., description="LLM model or engine used to formulate the answer")

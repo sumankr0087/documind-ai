@@ -9,7 +9,9 @@ from fastapi.responses import JSONResponse
 from app.api.documents import router as documents_router
 from app.api.health import router as health_router
 from app.api.questions import router as questions_router
+from app.api.chat import router as chat_router
 from app.config import get_settings
+from app.dependencies import get_bm25_service, get_sqlite_store, get_vector_store
 
 # Configure logging
 logging.basicConfig(
@@ -21,9 +23,14 @@ logger = logging.getLogger("documind")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Lifecycle events: initialize storage directories on startup."""
+    """Lifecycle events: initialize storage directories, SQLite, and BM25 index on startup."""
     settings = get_settings()
     settings.ensure_directories()
+    # Initialize SQLite Store
+    get_sqlite_store(settings)
+    # Warm up BM25 keyword index from stored chunks
+    vstore = get_vector_store(settings)
+    get_bm25_service(vstore)
     logger.info("DocuMind AI started successfully in '%s' environment", settings.app_env)
     yield
     logger.info("DocuMind AI shutting down")
@@ -56,6 +63,7 @@ app.add_middleware(
 app.include_router(health_router)
 app.include_router(documents_router)
 app.include_router(questions_router)
+app.include_router(chat_router)
 
 
 # Mount static frontend build if it exists
