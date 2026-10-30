@@ -19,6 +19,8 @@ import {
   Square,
   Layers,
   FileText,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 
 interface ChatInterfaceProps {
@@ -108,48 +110,43 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const selectedDocs = documents.filter((d) => selectedDocIds.includes(d.id));
 
   return (
-    <div className="flex h-[720px] bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+    <div className="chat-layout-wrapper">
       {/* 1. Topics Sidebar */}
-      <div
-        className={`${
-          sidebarOpen ? "w-64" : "w-12"
-        } transition-all duration-200 bg-slate-900 text-slate-100 flex flex-col border-r border-slate-800 shrink-0`}
-      >
-        <div className="p-3 border-b border-slate-800 flex items-center justify-between">
+      <aside className={`topics-sidebar ${sidebarOpen ? "" : "collapsed"}`}>
+        <div className="topics-header">
           {sidebarOpen ? (
             <>
-              <button
-                onClick={onCreateSession}
-                className="flex items-center gap-1.5 text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 py-1.5 rounded-lg transition"
-              >
-                <PlusCircle size={14} /> New Topic
+              <button onClick={onCreateSession} className="btn-new-topic" title="Start new conversation topic">
+                <PlusCircle size={14} />
+                <span>New Topic</span>
               </button>
               <button
                 onClick={() => setSidebarOpen(false)}
-                className="text-slate-400 hover:text-white text-xs p-1"
-                title="Collapse Topics Sidebar"
+                className="btn-sidebar-toggle"
+                title="Collapse sidebar"
               >
-                &larr;
+                <ChevronLeft size={16} />
               </button>
             </>
           ) : (
             <button
               onClick={() => setSidebarOpen(true)}
-              className="text-slate-400 hover:text-white mx-auto p-1"
-              title="Expand Topics Sidebar"
+              className="btn-sidebar-toggle"
+              style={{ margin: "0 auto" }}
+              title="Expand topics sidebar"
             >
-              <MessageSquare size={16} />
+              <ChevronRight size={16} />
             </button>
           )}
         </div>
 
         {sidebarOpen && (
-          <div className="flex-1 overflow-y-auto p-2 space-y-1">
-            <div className="text-[10px] font-semibold tracking-wider uppercase text-slate-400 px-2 py-1">
+          <div className="topics-list">
+            <div className="topics-section-title">
               Chat Topics ({sessions.length})
             </div>
             {sessions.length === 0 ? (
-              <div className="text-xs text-slate-500 px-2 py-3 text-center">
+              <div style={{ fontSize: "12px", color: "var(--slate-500)", padding: "12px 8px", textAlign: "center" }}>
                 No saved topics yet. Start chatting to save your conversation in SQLite.
               </div>
             ) : (
@@ -157,24 +154,22 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 <div
                   key={s.sessionId}
                   onClick={() => onSelectSession(s.sessionId)}
-                  className={`group flex items-center justify-between text-xs px-2.5 py-2 rounded-lg cursor-pointer transition ${
-                    activeSessionId === s.sessionId
-                      ? "bg-indigo-600 text-white font-medium"
-                      : "text-slate-300 hover:bg-slate-800 hover:text-white"
-                  }`}
+                  className={`topic-item ${activeSessionId === s.sessionId ? "active" : ""}`}
                 >
-                  <div className="flex items-center gap-2 truncate flex-1 mr-1">
-                    <MessageSquare size={13} className="shrink-0" />
-                    <span className="truncate">{s.title}</span>
+                  <div className="topic-title-wrapper">
+                    <MessageSquare size={13} style={{ flexShrink: 0 }} />
+                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {s.title}
+                    </span>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <span className="text-[10px] opacity-60">{s.messageCount}</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <span style={{ fontSize: "10px", opacity: 0.7 }}>{s.messageCount}</span>
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         onDeleteSession(s.sessionId);
                       }}
-                      className="opacity-0 group-hover:opacity-100 p-0.5 hover:text-red-400 transition"
+                      className="topic-delete-btn"
                       title="Delete topic"
                     >
                       <Trash2 size={12} />
@@ -185,48 +180,46 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
             )}
           </div>
         )}
-      </div>
+      </aside>
 
       {/* 2. Main Chat Conversation Area */}
-      <div className="flex-1 flex flex-col min-w-0 bg-slate-50/50">
+      <div className="chat-main-view">
         {/* Top Control Bar: Document Selection & Retrieval Toggles */}
-        <div className="bg-white px-4 py-2.5 border-b border-slate-200 flex items-center justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-2 flex-wrap flex-1">
+        <div className="chat-toolbar">
+          <div className="toolbar-left">
             {/* Multi-document scope button */}
-            <div className="relative">
+            <div style={{ position: "relative" }}>
               <button
                 onClick={() => setShowDocSelector(!showDocSelector)}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition ${
-                  selectedDocIds.length > 0
-                    ? "bg-indigo-50 border-indigo-200 text-indigo-700"
-                    : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
-                }`}
+                className={`btn-scope-filter ${selectedDocIds.length > 0 ? "active" : ""}`}
               >
                 <Filter size={13} />
                 <span>
                   {selectedDocIds.length === 0
                     ? `Searching All Documents (${documents.length})`
-                    : `Scoped to ${selectedDocIds.length} Selected Document(s)`}
+                    : `Scoped to ${selectedDocIds.length} Document(s)`}
                 </span>
               </button>
 
               {/* Document selection dropdown */}
               {showDocSelector && (
-                <div className="absolute left-0 mt-1.5 w-72 bg-white rounded-xl shadow-lg border border-slate-200 p-2 z-30">
-                  <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-slate-100">
-                    <span className="text-xs font-semibold text-slate-700">Select Scope:</span>
+                <div className="scope-dropdown-menu">
+                  <div className="scope-dropdown-header">
+                    <span>Select Search Scope:</span>
                     {selectedDocIds.length > 0 && (
                       <button
                         onClick={onClearDocSelection}
-                        className="text-[11px] text-indigo-600 hover:underline"
+                        style={{ background: "transparent", border: "none", color: "var(--primary)", fontSize: "11px", cursor: "pointer", fontWeight: 600 }}
                       >
                         Reset to All
                       </button>
                     )}
                   </div>
-                  <div className="max-h-56 overflow-y-auto space-y-1">
+                  <div className="scope-dropdown-list">
                     {documents.length === 0 ? (
-                      <p className="text-xs text-slate-400 p-2 text-center">No documents uploaded yet.</p>
+                      <p style={{ fontSize: "12px", color: "var(--slate-400)", padding: "8px", textAlign: "center" }}>
+                        No documents uploaded yet.
+                      </p>
                     ) : (
                       documents.map((doc) => {
                         const isChecked = selectedDocIds.includes(doc.id);
@@ -234,14 +227,16 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                           <div
                             key={doc.id}
                             onClick={() => onToggleDoc(doc.id)}
-                            className="flex items-center gap-2 p-1.5 hover:bg-slate-50 rounded cursor-pointer text-xs text-slate-700"
+                            className="scope-doc-item"
                           >
                             {isChecked ? (
-                              <CheckSquare size={14} className="text-indigo-600 shrink-0" />
+                              <CheckSquare size={14} style={{ color: "var(--primary)", flexShrink: 0 }} />
                             ) : (
-                              <Square size={14} className="text-slate-300 shrink-0" />
+                              <Square size={14} style={{ color: "var(--slate-300)", flexShrink: 0 }} />
                             )}
-                            <span className="truncate">{doc.filename}</span>
+                            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              {doc.filename}
+                            </span>
                           </div>
                         );
                       })
@@ -253,13 +248,12 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
             {/* Badges for selected documents */}
             {selectedDocs.map((doc) => (
-              <span
-                key={doc.id}
-                className="inline-flex items-center gap-1 bg-indigo-100/70 text-indigo-800 text-[11px] px-2 py-0.5 rounded-full"
-              >
+              <span key={doc.id} className="scoped-doc-chip">
                 <FileCheck size={11} />
-                <span className="truncate max-w-[140px]">{doc.filename}</span>
-                <button onClick={() => onToggleDoc(doc.id)} className="hover:text-indigo-950 font-bold ml-0.5">
+                <span style={{ maxWidth: "140px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {doc.filename}
+                </span>
+                <button onClick={() => onToggleDoc(doc.id)} className="btn-chip-remove">
                   &times;
                 </button>
               </span>
@@ -267,14 +261,10 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
           </div>
 
           {/* Right Toggles */}
-          <div className="flex items-center gap-2">
+          <div className="toolbar-right">
             <button
               onClick={() => setShowSettings(!showSettings)}
-              className={`flex items-center gap-1 px-2 py-1 rounded text-xs border transition ${
-                showSettings
-                  ? "bg-indigo-50 border-indigo-200 text-indigo-600"
-                  : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
-              }`}
+              className={`btn-options-toggle ${showSettings ? "active" : ""}`}
               title="Retrieval algorithms & settings"
             >
               <SlidersHorizontal size={13} />
@@ -284,10 +274,11 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
             {messages.length > 0 && (
               <button
                 onClick={onClear}
-                className="p-1.5 text-slate-400 hover:text-red-500 rounded transition"
+                className="btn-icon-subtle"
+                style={{ padding: "6px 8px" }}
                 title="Clear current view"
               >
-                <Trash2 size={14} />
+                <Trash2 size={13} />
               </button>
             )}
           </div>
@@ -295,71 +286,70 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
         {/* Advanced Settings Drawer */}
         {showSettings && (
-          <div className="bg-slate-100/80 px-4 py-2 border-b border-slate-200 flex items-center justify-between gap-4 text-xs flex-wrap">
-            <div className="flex items-center gap-2">
-              <span className="text-slate-600 font-medium">Top-K: {topK}</span>
+          <div className="options-drawer">
+            <div className="options-group">
+              <span style={{ fontWeight: 600, color: "var(--slate-700)" }}>Top-K: {topK}</span>
               <input
                 type="range"
                 min={1}
                 max={10}
                 value={topK}
                 onChange={(e) => onTopKChange(Number(e.target.value))}
-                className="w-24 accent-indigo-600 cursor-pointer"
+                style={{ width: "90px", cursor: "pointer", accentColor: "var(--primary)" }}
               />
             </div>
 
-            <div className="flex items-center gap-4">
-              <label className="flex items-center gap-1.5 cursor-pointer">
+            <div className="options-group">
+              <label className="option-checkbox-label">
                 <input
                   type="checkbox"
                   checked={enableHybrid}
                   onChange={(e) => onToggleHybrid(e.target.checked)}
-                  className="rounded text-indigo-600"
                 />
-                <span className="font-medium text-slate-700">Hybrid (Dense + BM25)</span>
+                <span>Hybrid (Dense + BM25)</span>
               </label>
 
-              <label className="flex items-center gap-1.5 cursor-pointer">
+              <label className="option-checkbox-label">
                 <input
                   type="checkbox"
                   checked={enableMmr}
                   onChange={(e) => onToggleMmr(e.target.checked)}
-                  className="rounded text-indigo-600"
                 />
-                <span className="font-medium text-slate-700">MMR Diversity</span>
+                <span>MMR Diversity</span>
               </label>
 
-              <label className="flex items-center gap-1.5 cursor-pointer">
+              <label className="option-checkbox-label">
                 <input
                   type="checkbox"
                   checked={enableReranking}
                   onChange={(e) => onToggleReranking(e.target.checked)}
-                  className="rounded text-indigo-600"
                 />
-                <span className="font-medium text-slate-700">Cross-Encoder Rerank</span>
+                <span>Cross-Encoder Rerank</span>
               </label>
             </div>
           </div>
         )}
 
         {/* Message Thread Area */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="chat-thread-container">
           {messages.length === 0 && !streamingDelta ? (
-            <div className="flex flex-col items-center justify-center h-full text-center p-6">
-              <div className="w-12 h-12 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 mb-3 shadow-inner">
-                <Sparkles size={24} />
+            <div className="chat-empty-state">
+              <div className="chat-empty-icon" style={{ marginBottom: "16px" }}>
+                <Sparkles size={26} color="var(--primary)" />
               </div>
-              <h3 className="font-bold text-slate-800 text-sm">Grounded Document Q&amp;A</h3>
-              <p className="text-xs text-slate-500 max-w-sm mt-1">
+              <h3 style={{ fontSize: "16px", fontWeight: 700, color: "var(--slate-800)", marginBottom: "4px" }}>
+                Grounded Document Q&amp;A
+              </h3>
+              <p style={{ fontSize: "12px", color: "var(--slate-500)", maxWidth: "420px", textAlign: "center", marginBottom: "24px" }}>
                 Ask questions across all or selected documents. Answers are streamed live with real-time citations and source verification.
               </p>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-w-lg mt-5 w-full">
+              <div className="sample-questions-grid">
                 {SAMPLE_QUESTIONS.map((q, idx) => (
                   <button
                     key={idx}
                     onClick={() => onAsk(q)}
-                    className="text-left text-xs p-2.5 rounded-lg border border-slate-200 bg-white hover:border-indigo-300 hover:shadow-sm text-slate-700 transition"
+                    className="sample-q-btn"
                   >
                     &ldquo;{q}&rdquo;
                   </button>
@@ -371,47 +361,38 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
               {messages.map((msg) => (
                 <div
                   key={msg.id}
-                  className={`flex gap-2.5 ${msg.sender === "user" ? "justify-end" : "justify-start"}`}
+                  className={`message-item ${msg.sender === "user" ? "user" : "assistant"}`}
                 >
-                  {msg.sender === "assistant" && (
-                    <div className="w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center shrink-0 mt-0.5">
-                      <Bot size={15} />
-                    </div>
-                  )}
+                  <div className={`msg-avatar ${msg.sender === "user" ? "user" : "assistant"}`}>
+                    {msg.sender === "user" ? <User size={15} /> : <Bot size={15} />}
+                  </div>
 
-                  <div className={`max-w-[80%] space-y-1.5 ${msg.sender === "user" ? "items-end" : "items-start"}`}>
-                    <div
-                      className={`px-3.5 py-2.5 rounded-2xl text-xs leading-relaxed ${
-                        msg.sender === "user"
-                          ? "bg-indigo-600 text-white rounded-br-none"
-                          : "bg-white text-slate-800 shadow-sm border border-slate-200 rounded-bl-none"
-                      }`}
-                    >
-                      <p className="whitespace-pre-wrap">{msg.text}</p>
+                  <div className="msg-body-wrapper">
+                    <div className="msg-bubble">
+                      <p style={{ whiteSpace: "pre-wrap" }}>{msg.text}</p>
                     </div>
 
                     {/* Insufficient Evidence Warning Banner */}
                     {msg.isInsufficientEvidence() && (
-                      <div className="flex items-center gap-1.5 text-xs text-amber-800 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg">
-                        <AlertTriangle size={14} className="text-amber-600 shrink-0" />
-                        <span>Insufficient Evidence: The scoped documents do not contain high-confidence data for this query.</span>
+                      <div className="insufficient-evidence-alert">
+                        <AlertTriangle size={15} color="var(--amber-700)" style={{ flexShrink: 0 }} />
+                        <span style={{ fontSize: "12px", color: "var(--amber-700)" }}>
+                          Insufficient Evidence: The scoped documents do not contain high-confidence data for this query.
+                        </span>
                       </div>
                     )}
 
                     {/* Prominent Evidence Filenames Used */}
                     {msg.sender === "assistant" && msg.citations && msg.citations.length > 0 && (
-                      <div className="pt-1">
-                        <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 mb-1">
-                          <Layers size={12} className="text-indigo-600" />
+                      <div style={{ marginTop: "4px" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "11px", fontWeight: 600, color: "var(--slate-500)", marginBottom: "4px" }}>
+                          <Layers size={12} color="var(--primary)" />
                           <span>Evidence Sources Used ({msg.citations.length}):</span>
                         </div>
-                        <div className="flex flex-wrap gap-1.5">
+                        <div className="evidence-source-tags">
                           {Array.from(new Set(msg.citations.map((c) => c.filename))).map((fname) => (
-                            <span
-                              key={fname}
-                              className="inline-flex items-center gap-1 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 text-[11px] font-medium px-2 py-0.5 rounded-md transition"
-                            >
-                              <FileText size={11} className="text-indigo-600" />
+                            <span key={fname} className="evidence-tag">
+                              <FileText size={11} color="var(--primary)" />
                               <span>{fname}</span>
                             </span>
                           ))}
@@ -421,12 +402,12 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
                     {/* Detailed Citations Cards */}
                     {msg.hasCitations() && (
-                      <div className="pt-1">
-                        <div className="flex items-center gap-1 text-[11px] font-medium text-slate-500 mb-1">
-                          <BookMarked size={12} className="text-indigo-500" />
+                      <div style={{ marginTop: "6px" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "11px", fontWeight: 500, color: "var(--slate-500)", marginBottom: "4px" }}>
+                          <BookMarked size={12} color="var(--primary)" />
                           <span>Detailed Chunk Snippets:</span>
                         </div>
-                        <div className="grid grid-cols-1 gap-1.5">
+                        <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                           {msg.citations.map((c, idx) => (
                             <CitationCard key={c.chunkId} citation={c} index={idx} />
                           ))}
@@ -434,25 +415,19 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                       </div>
                     )}
                   </div>
-
-                  {msg.sender === "user" && (
-                    <div className="w-7 h-7 rounded-full bg-slate-700 text-white flex items-center justify-center shrink-0 mt-0.5">
-                      <User size={15} />
-                    </div>
-                  )}
                 </div>
               ))}
 
               {/* Real-time Streaming Response Bubble */}
               {isAsking && streamingDelta && (
-                <div className="flex gap-2.5 justify-start">
-                  <div className="w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center shrink-0 mt-0.5">
+                <div className="message-item assistant">
+                  <div className="msg-avatar assistant">
                     <Bot size={15} />
                   </div>
-                  <div className="max-w-[80%]">
-                    <div className="px-3.5 py-2.5 rounded-2xl bg-white text-slate-800 shadow-sm border border-slate-200 rounded-bl-none text-xs leading-relaxed">
-                      <p className="whitespace-pre-wrap">{streamingDelta}</p>
-                      <span className="inline-block w-1.5 h-3 bg-indigo-600 ml-1 animate-pulse" />
+                  <div className="msg-body-wrapper" style={{ maxWidth: "80%" }}>
+                    <div className="msg-bubble">
+                      <p style={{ whiteSpace: "pre-wrap" }}>{streamingDelta}</p>
+                      <span style={{ display: "inline-block", width: "6px", height: "12px", background: "var(--primary)", marginLeft: "4px" }} />
                     </div>
                   </div>
                 </div>
@@ -460,8 +435,8 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
               {/* Loading Indicator before stream starts */}
               {isAsking && !streamingDelta && (
-                <div className="flex items-center gap-2 text-slate-500 text-xs px-2 py-1">
-                  <Loader2 size={14} className="spin-icon text-indigo-600" />
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "12px", color: "var(--slate-500)", padding: "4px 8px" }}>
+                  <Loader2 size={15} className="spin-icon" color="var(--primary)" />
                   <span>Searching documents &amp; initializing model response...</span>
                 </div>
               )}
@@ -472,8 +447,8 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
         </div>
 
         {/* Input Box */}
-        <div className="p-3 bg-white border-t border-slate-200">
-          <form onSubmit={handleSubmit} className="flex items-center gap-2 bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500">
+        <div className="chat-input-bar">
+          <form onSubmit={handleSubmit} className="chat-input-box">
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -486,18 +461,19 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                   : "Ask questions across all indexed documents... (Press Enter)"
               }
               rows={1}
-              className="flex-1 bg-transparent resize-none outline-none text-xs text-slate-800 placeholder-slate-400"
+              className="chat-input-textarea"
               disabled={isAsking}
             />
             <button
               type="submit"
               disabled={!input.trim() || isAsking}
-              className="p-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-40 transition"
+              className="btn-chat-send"
+              title="Send question"
             >
               {isAsking ? <Loader2 size={14} className="spin-icon" /> : <Send size={14} />}
             </button>
           </form>
-          <div className="flex items-center justify-between text-[10px] text-slate-400 px-1 mt-1">
+          <div className="chat-input-footer-info">
             <span>Press <strong>Enter</strong> to send &bull; <strong>Shift + Enter</strong> for newline</span>
             <span>Real-time SSE token streaming enabled</span>
           </div>
